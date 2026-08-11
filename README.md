@@ -1,4 +1,4 @@
-# vintage
+# Vintage Lab
 
 A reproducible launcher for retro-computer replicas. Each machine lives in its
 own self-contained folder that describes the hardware and holds its persistent
