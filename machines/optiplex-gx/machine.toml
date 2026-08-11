@@ -1,0 +1,11 @@
+name     = "Dell OptiPlex GX — Pentium II"
+emulator = "86box"
+config   = "86box.cfg"
+
+[[media]]
+slot = "cdrom"
+file = "media/win98se.iso"
+
+[[media]]
+slot = "floppy_a"
+file = "media/dos-boot.img"
