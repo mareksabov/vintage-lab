@@ -15,3 +15,6 @@ __pycache__/
 result
 roms-result
 .direnv/
+
+# Local agent/workflow scratch (briefs, ledgers, review packages)
+.superpowers/

@@ -194,3 +194,13 @@ Running the emulator cannot be unit-tested, but the launcher logic can:
   remotely.
 - Media upload: uploading disk/floppy images through the frontend instead of
   copying files in by hand.
+- Media control abstraction: the declarative `machine.toml [[media]]` set,
+  applied by each driver at launch, is the universal cross-emulator contract
+  ("what is inserted"), because emulators differ most in their runtime media
+  handling — 86Box has no stable external command to swap media while running
+  (config-at-launch or GUI only), whereas QEMU (QMP `eject`/`change`), DOSBox
+  (`imgmount`), and VICE (monitor) do. Keep declarative-at-launch as the base;
+  add optional per-driver `insert(slot, file)` / `eject(slot)` capabilities for
+  live-capable emulators later, surfaced as `vintage insert` / `vintage eject`
+  commands that edit the machine's media set (works everywhere via relaunch)
+  and act live where the driver supports it.
