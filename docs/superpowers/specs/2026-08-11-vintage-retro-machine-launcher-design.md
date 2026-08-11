@@ -156,12 +156,24 @@ the Nix store.
   machine.
 - No global installs; everything runs via Nix and this folder.
 
-## Risks / Open Items (verify first in implementation)
+## Risks / Open Items
 
-1. **86Box on macOS via nixpkgs.** Verify that `_86Box` builds on
-   `aarch64-darwin`. If it does not, resolve it (e.g. build from source in the
-   flake) before proceeding. This is the primary technical risk.
-2. **86Box ROM/BIOS set.** Verify it is available reproducibly from Nix.
+De-risking spike results (2026-08-11, on `aarch64-darwin`):
+
+1. **86Box on macOS via nixpkgs — RESOLVED.** The package is available as a
+   prebuilt binary in the Nix binary cache for `aarch64-darwin` (a dry-run only
+   fetches ~50 MiB, nothing compiles) and nixpkgs ships a dedicated
+   `darwin.patch`. The primary technical risk is retired.
+   - **Note:** the attribute was renamed `_86Box` → `_86box`; the main program
+     binary is `86Box`. Use the new attribute name in the flake.
+2. **86Box ROM/BIOS set — DECIDED.** The 86Box package does **not** bundle ROMs,
+   and there is no roms attribute in nixpkgs. ROMs live in the upstream
+   `86Box/roms` repository and are copyrighted, so they must not be committed to
+   this public repo. Approach: pin `github:86Box/roms` as a flake input with
+   `flake = false`. ROMs are then reproducible (they live in the Nix store /
+   flake input, not in git), and the 86Box driver points the emulator at that
+   store path. Verify at implementation time that the repo path and 86Box's
+   expected roms directory layout line up.
 3. **Media provenance.** OS/boot images are provided by the user for hardware
    they owned, and are kept out of the public repository via `.gitignore`.
 
