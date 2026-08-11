@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from ..cfg import set_values
@@ -32,7 +33,13 @@ def apply_media(machine: Machine) -> None:
     for m in machine.media:
         if m.slot not in SLOT_KEYS:
             raise ValueError(f"unknown media slot: {m.slot!r}")
-        values[SLOT_KEYS[m.slot]] = str((machine.path / m.file).resolve())
+        resolved = (machine.path / m.file).resolve()
+        if not (machine.path / m.file).exists():
+            print(
+                f"warning: media file not found: {resolved} (slot {m.slot!r})",
+                file=sys.stderr,
+            )
+        values[SLOT_KEYS[m.slot]] = str(resolved)
     if values:
         cfg_path.write_text(set_values(cfg_path.read_text(), values))
 

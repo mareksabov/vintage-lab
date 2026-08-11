@@ -96,6 +96,29 @@ def test_link_roms_raises_on_real_directory(tmp_path):
         emu86box.link_roms(vm, roms)
 
 
+def test_apply_media_warns_on_missing_file(tmp_path, capsys):
+    """apply_media still writes the cfg key but emits a stderr warning when the
+    media file does not exist on disk."""
+    d = tmp_path / "missing-media-machine"
+    (d / "state").mkdir(parents=True)
+    (d / "machine.toml").write_text(
+        'name = "Test"\nemulator = "86box"\nconfig = "86box.cfg"\n'
+        '[[media]]\nslot = "floppy_a"\nfile = "media/missing.img"\n'
+    )
+    (d / "86box.cfg").write_text("[General]\nvid = 1\n")
+    (d / "state" / "86box.cfg").write_text("[General]\nvid = 1\n")
+    machine = load_machine(d)
+    # The media file deliberately does NOT exist.
+    emu86box.apply_media(machine)
+    section, key = emu86box.SLOT_KEYS["floppy_a"]
+    text = (machine.state_dir / "86box.cfg").read_text()
+    # Key must still be written.
+    assert key in text
+    # Warning must name the missing file.
+    captured = capsys.readouterr()
+    assert "missing.img" in captured.err
+
+
 def test_build_argv():
     assert emu86box.build_argv("/nix/store/x/bin/86Box", Path("/vm")) == [
         "/nix/store/x/bin/86Box", "-P", "/vm",

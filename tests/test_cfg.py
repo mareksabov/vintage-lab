@@ -19,3 +19,13 @@ def test_preserves_other_keys_and_key_case():
     out = set_values(text, {("General", "vid_resize"): "1"})
     assert "WindowedMode = 1" in out       # untouched, case preserved
     assert "vid_resize = 1" in out
+
+
+def test_percent_value_written_verbatim():
+    # interpolation=None is required so 86Box values containing % are not
+    # mis-parsed as configparser interpolation markers.
+    text = "[Hard disks]\nhdd_01_fn = old.img\n"
+    value = r"C:\WINDOWS\%USERNAME%\hdd.img"
+    out = set_values(text, {("Hard disks", "hdd_01_fn"): value})
+    # Must not raise configparser.InterpolationSyntaxError and must round-trip.
+    assert value in out

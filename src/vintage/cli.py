@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -70,8 +71,6 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    import os
-
     args = _build_parser().parse_args(argv)
     root = Path(args.machines) if args.machines else machines_root(os.environ)
 

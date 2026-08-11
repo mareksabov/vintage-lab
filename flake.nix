@@ -42,7 +42,7 @@
         default = vintage;
       });
 
-      apps = forAll (system: pkgs:
+      apps = forAll (system: _:
         let program = "${self.packages.${system}.vintage}/bin/vintage";
         in {
           default = { type = "app"; program = program; };
@@ -59,6 +59,7 @@
       });
 
       # The 86Box ROM set, exposed for inspection / driver wiring.
+      # roms86box is a flake=false source-info set; .outPath extracts the Nix store path so `nix build .#romsPath` works.
       romsPath = roms86box.outPath;
     };
 }
