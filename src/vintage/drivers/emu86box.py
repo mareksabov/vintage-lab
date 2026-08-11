@@ -10,10 +10,12 @@ from ..cfg import set_values
 from ..machine import Machine
 
 # Media slot -> (section, key) in 86box.cfg.
-# Reconcile with docs/86box-runtime-notes.md (Task 2) before relying on these.
+# Verified against 86Box 6.0 output; see docs/86box-runtime-notes.md.
+# Note: 86Box stores the mounted floppy image under `fdd_NN_fn`, but the
+# mounted CD-ROM image under `cdrom_NN_image_path` (not `_fn`).
 SLOT_KEYS: dict[str, tuple[str, str]] = {
-    "floppy_a": ("Floppy and CD-ROM drives", "fdd_01_image_path"),
-    "floppy_b": ("Floppy and CD-ROM drives", "fdd_02_image_path"),
+    "floppy_a": ("Floppy and CD-ROM drives", "fdd_01_fn"),
+    "floppy_b": ("Floppy and CD-ROM drives", "fdd_02_fn"),
     "cdrom": ("Floppy and CD-ROM drives", "cdrom_01_image_path"),
 }
 

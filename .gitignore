@@ -1,7 +1,8 @@
-# Never commit machine media or persistent state (may include copyrighted images)
-**/media/
-**/state/
-# but keep the placeholder dirs
+# Never commit machine media or persistent state (may include copyrighted images).
+# Ignore the *contents* (not the dirs themselves) so the .gitkeep placeholders
+# survive — a bare `**/media/` would exclude the dir and defeat the negations.
+**/media/*
+**/state/*
 !**/media/.gitkeep
 !**/state/.gitkeep
 
