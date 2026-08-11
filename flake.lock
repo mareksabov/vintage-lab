@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1786348146,
+        "narHash": "sha256-we5zDEFfn8TgzeWKjKDMIjeQZ59omEPl23NIF+13/ys=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d482ef84049d9b7276b83a06e4e4d76983830097",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "roms86box": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786024618,
+        "narHash": "sha256-8yxC4t1uYgs0PfES1XIeRb+y/7XuWI7CAeDyeDhX9XI=",
+        "owner": "86Box",
+        "repo": "roms",
+        "rev": "f2b2daa0f445b767a22bdf4584e274f327f98ccd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "86Box",
+        "repo": "roms",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "roms86box": "roms86box"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

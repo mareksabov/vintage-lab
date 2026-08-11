@@ -1,0 +1,12 @@
+# Never commit machine media or persistent state (may include copyrighted images)
+**/media/
+**/state/
+# but keep the placeholder dirs
+!**/media/.gitkeep
+!**/state/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+result
