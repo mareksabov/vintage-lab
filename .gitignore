@@ -9,4 +9,8 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Nix / direnv build artifacts and caches
 result
+roms-result
+.direnv/
