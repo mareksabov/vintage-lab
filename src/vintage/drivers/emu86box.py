@@ -71,4 +71,7 @@ def link_roms(vmdir: Path, roms_path: Path) -> None:
 
 
 def build_argv(box_bin: str, vmdir: Path) -> list[str]:
-    return [box_bin, "-P", str(vmdir)]
+    # 86Box resolves a relative -P against its own userfiles dir (~/Library/86Box
+    # on macOS), not the CWD, so a relative path misses our state/roms symlink.
+    # Always pass an absolute path.
+    return [box_bin, "-P", str(vmdir.resolve())]

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pytest
 from vintage.machine import load_machine
@@ -119,7 +120,21 @@ def test_apply_media_warns_on_missing_file(tmp_path, capsys):
     assert "missing.img" in captured.err
 
 
-def test_build_argv():
-    assert emu86box.build_argv("/nix/store/x/bin/86Box", Path("/vm")) == [
-        "/nix/store/x/bin/86Box", "-P", "/vm",
-    ]
+def test_build_argv_absolute_path_preserved(tmp_path):
+    # An already-absolute path must be preserved (not mangled or made relative).
+    vmdir = tmp_path / "state"
+    vmdir.mkdir()
+    result = emu86box.build_argv("/nix/store/x/bin/86Box", vmdir)
+    assert result == ["/nix/store/x/bin/86Box", "-P", str(vmdir.resolve())]
+    assert os.path.isabs(result[2])
+
+
+def test_build_argv_relative_path_resolved_to_absolute(tmp_path, monkeypatch):
+    # 86Box resolves a relative -P against ~/Library/86Box (macOS) rather than
+    # the CWD, so build_argv must always emit an absolute path.
+    sub = tmp_path / "sub" / "state"
+    sub.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    result = emu86box.build_argv("86Box", Path("sub/state"))
+    assert os.path.isabs(result[2]), "relative vmdir must be turned into an absolute path"
+    assert result[2] == str(sub.resolve())
