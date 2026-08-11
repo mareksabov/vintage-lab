@@ -42,13 +42,12 @@
         default = vintage;
       });
 
-      apps = forAll (system: pkgs: {
-        default = {
-          type = "app";
-          program = "${self.packages.${system}.vintage}/bin/vintage";
-        };
-        vintage = self.apps.${system}.default;
-      });
+      apps = forAll (system: pkgs:
+        let program = "${self.packages.${system}.vintage}/bin/vintage";
+        in {
+          default = { type = "app"; program = program; };
+          vintage = { type = "app"; program = program; };
+        });
 
       devShells = forAll (system: pkgs: {
         default = pkgs.mkShell {
