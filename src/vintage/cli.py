@@ -67,6 +67,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_dup.add_argument("dst")
     p_run = sub.add_parser("run", help="boot a machine")
     p_run.add_argument("machine")
+    p_mk = sub.add_parser(
+        "mkfloppy", help="build a 1.44MB floppy image from a folder"
+    )
+    p_mk.add_argument("src", help="source folder whose contents go on the floppy")
+    p_mk.add_argument("out", help="output image path (e.g. .../media/pop.img)")
+    p_mk.add_argument("--label", default="FLOPPY", help="volume label (<=11 chars)")
     return parser
 
 
@@ -84,4 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         from .run import cmd_run
 
         return cmd_run(root, args.machine, env=os.environ)
+    if args.command == "mkfloppy":
+        from .mkfloppy import make_floppy
+
+        return make_floppy(Path(args.src), Path(args.out), label=args.label)
     return 2

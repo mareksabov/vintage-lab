@@ -35,7 +35,8 @@
           postBuild = ''
             wrapProgram $out/bin/vintage \
               --set VINTAGE_86BOX_BIN ${emulator86box}/bin/86Box \
-              --set VINTAGE_ROMS_86BOX ${roms86box}
+              --set VINTAGE_ROMS_86BOX ${roms86box} \
+              --prefix PATH : ${pkgs.mtools}/bin
           '';
         };
 
@@ -51,7 +52,7 @@
 
       devShells = forAll (system: pkgs: {
         default = pkgs.mkShell {
-          packages = [ pkgs.python311 pkgs.python311Packages.pytest ];
+          packages = [ pkgs.python311 pkgs.python311Packages.pytest pkgs.mtools ];
           shellHook = ''
             export PYTHONPATH="$PWD/src''${PYTHONPATH:+:$PYTHONPATH}"
           '';
