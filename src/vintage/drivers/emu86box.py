@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from ..cfg import set_values
@@ -37,9 +38,26 @@ def apply_media(machine: Machine) -> None:
 
 
 def link_roms(vmdir: Path, roms_path: Path) -> None:
+    """Create or repair the vmdir/roms symlink so it points at roms_path.
+
+    Rules:
+    - Correct existing symlink (target == roms_path) → no-op.
+    - Symlink pointing elsewhere OR broken/dangling → remove and re-create.
+    - Non-symlink entry (real dir/file) → raise RuntimeError to protect user data.
+    - Missing → create.
+    """
     link = vmdir / "roms"
-    if link.is_symlink() or link.exists():
-        return
+    if link.is_symlink():
+        # os.readlink works even for dangling symlinks; .resolve() does not.
+        current_target = Path(os.readlink(link))
+        if current_target == roms_path or current_target == roms_path.resolve():
+            return
+        link.unlink()
+    elif link.exists():
+        raise RuntimeError(
+            f"{link} exists as a non-symlink (real file or directory). "
+            "Remove it manually before letting the driver manage it."
+        )
     link.symlink_to(roms_path)
 
 

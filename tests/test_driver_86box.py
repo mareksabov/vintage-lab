@@ -49,6 +49,53 @@ def test_link_roms_creates_symlink(tmp_path):
     emu86box.link_roms(vm, roms)  # idempotent, no error
 
 
+def test_link_roms_repairs_wrong_target(tmp_path):
+    """A symlink pointing at the wrong path is replaced."""
+    vm = tmp_path / "state"
+    vm.mkdir()
+    old_roms = tmp_path / "old-roms"
+    old_roms.mkdir()
+    new_roms = tmp_path / "new-roms"
+    new_roms.mkdir()
+    # Create link pointing at old path
+    (vm / "roms").symlink_to(old_roms)
+    emu86box.link_roms(vm, new_roms)
+    link = vm / "roms"
+    assert link.is_symlink()
+    assert link.resolve() == new_roms.resolve()
+
+
+def test_link_roms_repairs_broken_dangling_symlink(tmp_path):
+    """A dangling symlink (target deleted) is replaced."""
+    vm = tmp_path / "state"
+    vm.mkdir()
+    gone_roms = tmp_path / "gone-roms"
+    gone_roms.mkdir()
+    (vm / "roms").symlink_to(gone_roms)
+    gone_roms.rmdir()  # make the symlink dangle
+    assert (vm / "roms").is_symlink()
+    assert not (vm / "roms").exists()  # confirms it's dangling
+
+    new_roms = tmp_path / "new-roms"
+    new_roms.mkdir()
+    emu86box.link_roms(vm, new_roms)
+    link = vm / "roms"
+    assert link.is_symlink()
+    assert link.resolve() == new_roms.resolve()
+
+
+def test_link_roms_raises_on_real_directory(tmp_path):
+    """A real (non-symlink) directory at vmdir/roms raises RuntimeError."""
+    vm = tmp_path / "state"
+    vm.mkdir()
+    real_dir = vm / "roms"
+    real_dir.mkdir()
+    roms = tmp_path / "roms-store"
+    roms.mkdir()
+    with pytest.raises(RuntimeError, match="non-symlink"):
+        emu86box.link_roms(vm, roms)
+
+
 def test_build_argv():
     assert emu86box.build_argv("/nix/store/x/bin/86Box", Path("/vm")) == [
         "/nix/store/x/bin/86Box", "-P", "/vm",
