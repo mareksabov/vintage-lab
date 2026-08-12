@@ -11,20 +11,22 @@ from typing import Mapping, TextIO
 
 from .machine import discover_machines
 
-# Emulator -> (native config filename, starter config body).
-_EMULATOR_TEMPLATES: dict[str, tuple[str, str]] = {
-    "86box": ("86box.cfg", "[General]\n"),
+# Emulator -> (native config filename, starter config body, extra machine.toml).
+_EMULATOR_TEMPLATES: dict[str, tuple[str, str, str]] = {
+    "86box": ("86box.cfg", "[General]\n", ""),
     "vice": (
         "vicerc",
         "# VICE configuration; hardware defaults come from VICE.\n",
+        'model    = "c64"\n',
     ),
 }
 
 
-def _machine_toml(name: str, emulator: str, config: str) -> str:
+def _machine_toml(name: str, emulator: str, config: str, extra: str = "") -> str:
     return (
         f'name     = "{name}"\n'
         f'emulator = "{emulator}"\n'
+        f'{extra}'
         f'config   = "{config}"\n'
     )
 
@@ -54,10 +56,12 @@ def cmd_new(root: Path, name: str, emulator: str = "86box") -> int:
     if dest.exists():
         print(f"error: machine {name!r} already exists", file=sys.stderr)
         return 1
-    config_name, config_body = template
+    config_name, config_body, extra_toml = template
     (dest / "media").mkdir(parents=True)
     (dest / "state").mkdir(parents=True)
-    (dest / "machine.toml").write_text(_machine_toml(name, emulator, config_name))
+    (dest / "machine.toml").write_text(
+        _machine_toml(name, emulator, config_name, extra_toml)
+    )
     (dest / config_name).write_text(config_body)
     return 0
 

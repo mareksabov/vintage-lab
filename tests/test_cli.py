@@ -63,6 +63,12 @@ def test_cmd_new_vice_scaffolds_vicerc(tmp_path):
     assert not (d / "86box.cfg").exists()
 
 
+def test_new_vice_machine_writes_model(tmp_path):
+    assert cli.cmd_new(tmp_path, "myvice", emulator="vice") == 0
+    toml = (tmp_path / "myvice" / "machine.toml").read_text()
+    assert 'model    = "c64"' in toml
+
+
 def test_cmd_new_rejects_unknown_emulator(tmp_path, capsys):
     rc = cli.cmd_new(tmp_path, "x", emulator="atari")
     assert rc == 1

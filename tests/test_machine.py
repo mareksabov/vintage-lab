@@ -36,6 +36,16 @@ def test_discover_machines_sorted_ignores_non_machines(machine_root: Path):
     assert ids == ["c64", "optiplex-gx"]
 
 
+def test_shipped_vic20_machine_loads():
+    repo_machines = Path(__file__).resolve().parents[1] / "machines"
+    m = load_machine(repo_machines / "vic20")
+    assert m.emulator == "vice"
+    assert m.options.get("model") == "vic20"
+    assert m.config == "vicerc"
+    assert m.media == ()  # boots to READY. bare
+    assert (repo_machines / "vic20" / "vicerc").is_file()
+
+
 def test_load_machine_captures_extra_keys_in_options(tmp_path):
     d = tmp_path / "vic20"
     (d / "media").mkdir(parents=True)

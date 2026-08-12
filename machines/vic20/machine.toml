@@ -1,9 +1,10 @@
-name     = "Commodore 64"
+name     = "Commodore VIC-20"
 emulator = "vice"
-model    = "c64"
+model    = "vic20"
 config   = "vicerc"
 
-# Optional RAM expansion (C64 REU): ram = "reu"
+# Optional RAM expansion (VIC-20 memory blocks: 3k / 8k / 16k / 24k / all).
+# ram = "24k"
 
 # Optional media (user-provided, gitignored). Slots -> VICE flags:
 #   drive8    -8         disk image
@@ -12,4 +13,4 @@ config   = "vicerc"
 #   autostart -autostart attach and auto-run (.prg / .d64 / .crt / .tap)
 # [[media]]
 # slot = "drive8"
-# file = "media/demo.d64"
+# file = "media/game.d64"
