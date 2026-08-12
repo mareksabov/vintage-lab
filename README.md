@@ -5,20 +5,22 @@ own self-contained folder that describes the hardware and holds its persistent
 state. A small Nix-packaged CLI reads that folder and boots the right emulator.
 The same Nix flake reproduces an identical setup on macOS and Linux.
 
-The first supported machine is a Dell OptiPlex-class Pentium II running in
-[86Box](https://86box.net/) — a machine that can boot plain DOS and Windows 98,
-just like the original hardware.
+Three machines ship today:
 
-Two Commodore machines also ship, running under [VICE](https://vice-emu.sourceforge.io/):
-a **Commodore 64** (`x64sc`) and a **VIC-20** (`xvic`). Both boot to the BASIC
-`READY.` prompt with no user-provided media, and both accept a disk, a
-CRT cartridge, a datasette tape, or an auto-run program, plus an optional RAM
-expansion (VIC-20 memory blocks; C64 REU) — see
-[Commodore machines](#commodore-machines).
+| Machine | Emulator | Boots to |
+|---|---|---|
+| **Dell OptiPlex GX** — Pentium II | [86Box](https://86box.net/) | plain DOS or Windows 98, off your own install media |
+| **Commodore 64** | [VICE](https://vice-emu.sourceforge.io/) `x64sc` | the BASIC `READY.` prompt, no media needed |
+| **Commodore VIC-20** | VICE `xvic` | the BASIC `READY.` prompt, no media needed |
 
-> **Status:** the launcher core and Nix packaging are complete and tested. The
-> shipped OptiPlex hardware profile and the exact 86Box media-config keys are
-> authored interactively (see [Authoring a machine](#authoring-a-machine)).
+Both Commodore machines accept a disk, a CRT cartridge, a datasette tape or an
+auto-run program, plus an optional RAM expansion (VIC-20 memory blocks; C64
+REU) — see [Commodore machines](#commodore-machines).
+
+> **Status:** working — all three machines boot, and the launcher core and Nix
+> packaging are complete and tested. 86Box hardware profiles are authored
+> interactively in the 86Box UI rather than hand-written (see
+> [Authoring a machine](#authoring-a-machine)).
 
 ## Requirements
 
@@ -26,7 +28,9 @@ expansion (VIC-20 memory blocks; C64 REU) — see
   (`experimental-features = nix-command flakes`). Nothing else is installed
   system-wide — the emulator and the CLI come from the flake.
 
-The 86Box binary is fetched from the Nix binary cache (no compilation).
+The 86Box and VICE binaries are fetched from the Nix binary cache (no
+compilation). On Apple Silicon, VICE comes from the official prebuilt arm64
+SDL2 build packaged by the flake.
 
 ## Quick start
 
@@ -34,14 +38,19 @@ The 86Box binary is fetched from the Nix binary cache (no compilation).
 # List the machines defined under ./machines
 nix run .#vintage -- list
 
-# Boot a machine (opens the 86Box window)
+# Boot a machine (opens the emulator window)
 nix run .#vintage -- run optiplex-gx
+nix run .#vintage -- run c64
 
-# Scaffold a new machine folder
+# Scaffold a new machine folder (--emulator: 86box (default) or vice)
 nix run .#vintage -- new dos622
+nix run .#vintage -- new c64-spare --emulator vice
 
 # Duplicate a machine, including its installed state
 nix run .#vintage -- duplicate optiplex-gx optiplex-clone
+
+# Build a 1.44MB DOS floppy image from a folder of files
+nix run .#vintage -- mkfloppy ./pop machines/optiplex-gx/media/pop.img --label POP
 ```
 
 The machines directory defaults to `./machines`. Override it with the
@@ -87,7 +96,8 @@ slot = "floppy_a"
 file = "media/dos-boot.img"
 ```
 
-On `run`, the launcher:
+The layout above is an 86Box machine; a VICE machine has the same shape, with
+`vicerc` in place of `86box.cfg`. On `run` of an **86Box** machine, the launcher:
 
 1. copies the `86box.cfg` template into `state/` on first run only (so your
    installed system and its settings are never overwritten afterwards),
@@ -96,6 +106,9 @@ On `run`, the launcher:
 3. injects the `machine.toml` media paths into the state config, and
 4. launches 86Box with `state/` as its VM directory, so the hard-disk image and
    NVRAM persist there.
+
+A **VICE** machine skips steps 2 and 3: VICE bundles its own ROMs, and it takes
+media as command-line flags rather than config keys.
 
 **Duplicating** a machine is just copying the folder (`vintage duplicate`, or
 `cp -r`): the clone carries both the recipe and the installed system, and runs
@@ -108,6 +121,9 @@ re-asserted into the config on **every** `run`. Ejecting a disk in the 86Box GUI
 does not persist across runs — edit `machine.toml` to change what is inserted. If
 a referenced media file is missing, the launcher warns on stderr and continues
 (the drive simply shows empty).
+
+The same rule holds for VICE by a different mechanism: media is passed as flags
+on every `run`, so nothing about it is ever stored in `vicerc`.
 
 ## Commodore machines
 
@@ -182,7 +198,14 @@ games and software per platform, plus legal sources — see
   C64 and VIC-20; Amiga via FS-UAE next).
 - Uploading media through the frontend instead of copying files in by hand.
 
-## License
+## Design documents
 
 See the design and plan documents under `docs/superpowers/` for the full
-architecture and rationale.
+architecture and rationale, and `docs/86box-runtime-notes.md` /
+`docs/vice-runtime-notes.md` for the emulator facts each driver relies on.
+
+## License
+
+MIT — see [LICENSE](LICENSE). This covers the launcher only; the emulators it
+drives carry their own licenses, and no ROMs, operating systems or disk images
+are distributed here.
