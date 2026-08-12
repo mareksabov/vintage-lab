@@ -34,3 +34,21 @@ def test_load_machine_without_media_gives_empty_tuple(machine_root: Path):
 def test_discover_machines_sorted_ignores_non_machines(machine_root: Path):
     ids = [m.id for m in discover_machines(machine_root)]
     assert ids == ["c64", "optiplex-gx"]
+
+
+def test_load_machine_captures_extra_keys_in_options(tmp_path):
+    d = tmp_path / "vic20"
+    (d / "media").mkdir(parents=True)
+    (d / "state").mkdir(parents=True)
+    (d / "machine.toml").write_text(
+        'name = "VIC-20"\nemulator = "vice"\nmodel = "vic20"\n'
+        'config = "vicerc"\nram = "24k"\n'
+    )
+    (d / "vicerc").write_text("# bare\n")
+    m = load_machine(d)
+    assert m.options == {"model": "vic20", "ram": "24k"}
+
+
+def test_load_machine_without_extra_keys_has_empty_options(machine_root):
+    m = load_machine(machine_root / "optiplex-gx")
+    assert m.options == {}

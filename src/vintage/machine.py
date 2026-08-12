@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Mapping
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class Machine:
     emulator: str
     config: str
     media: tuple[Media, ...] = ()
+    # Non-core machine.toml keys (e.g. vice `model`/`ram`); read per-driver.
+    options: Mapping[str, object] = field(default_factory=dict, compare=False)
 
     @property
     def state_dir(self) -> Path:
@@ -37,6 +40,8 @@ def load_machine(path: Path) -> Machine:
         Media(slot=entry["slot"], file=entry["file"])
         for entry in data.get("media", [])
     )
+    core = {"name", "emulator", "config", "media"}
+    options = {k: v for k, v in data.items() if k not in core}
     return Machine(
         id=path.name,
         path=path,
@@ -44,6 +49,7 @@ def load_machine(path: Path) -> Machine:
         emulator=data["emulator"],
         config=data["config"],
         media=media,
+        options=options,
     )
 
 
