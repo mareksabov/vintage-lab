@@ -198,12 +198,6 @@ games and software per platform, plus legal sources — see
   C64 and VIC-20; Amiga via FS-UAE next).
 - Uploading media through the frontend instead of copying files in by hand.
 
-## Design documents
-
-See the design and plan documents under `docs/superpowers/` for the full
-architecture and rationale, and `docs/86box-runtime-notes.md` /
-`docs/vice-runtime-notes.md` for the emulator facts each driver relies on.
-
 ## License
 
 MIT — see [LICENSE](LICENSE). This covers the launcher only; the emulators it
