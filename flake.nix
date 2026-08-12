@@ -15,7 +15,51 @@
       forAll = f: nixpkgs.lib.genAttrs systems (system: f system nixpkgs.legacyPackages.${system});
     in
     {
-      packages = forAll (system: pkgs: rec {
+      packages = forAll (system: pkgs:
+        let
+          # VICE has no usable nixpkgs build on Darwin (Linux-only deps: alsa,
+          # pulseaudio, libevdev; GTK3 also fails to build there). Use the
+          # official prebuilt native arm64 SDL2 app from the VICE project. Its
+          # binaries are code-signed, so we copy the distribution verbatim and
+          # never strip/patch it (dontFixup), keeping the signatures valid.
+          vice-macos = pkgs.stdenvNoCC.mkDerivation {
+            pname = "vice-macos-bin";
+            version = "3.9";
+            src = pkgs.fetchurl {
+              url = "https://downloads.sourceforge.net/project/vice-emu/releases/binaries/macosx/vice-arm64-sdl2-3.9.dmg";
+              hash = "sha256-ZYQRF8uUVnxolo3B/ZmjqfZXfzaPNZ6LG2p72FH1imU=";
+            };
+            nativeBuildInputs = [ pkgs.undmg ];
+            sourceRoot = ".";
+            dontFixup = true;
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              # undmg extracts the distribution folder alongside an
+              # `Applications` symlink; glob its name (no trailing slash, so it
+              # is copied AS $out/vice) so a version bump only needs the
+              # url+hash changed, not this path.
+              cp -R vice-*-sdl2-* "$out/vice"
+              runHook postInstall
+            '';
+            meta = {
+              description = "Official VICE arm64 SDL2 macOS build (Commodore emulators)";
+              homepage = "https://vice-emu.sourceforge.io/";
+              license = nixpkgs.lib.licenses.gpl2Plus;
+              platforms = [ "aarch64-darwin" ];
+            };
+          };
+
+          # Source of the x64sc binary per platform: nixpkgs on Linux, the
+          # prebuilt app on aarch64-darwin, nothing elsewhere. The wrapper
+          # script resolves VICE.app relative to its own dir, so point straight
+          # at .../vice/bin/x64sc (no bin/ symlink — that would break dirname).
+          viceBin =
+            if pkgs.stdenv.isLinux then "${pkgs.vice}/bin/x64sc"
+            else if system == "aarch64-darwin" then "${vice-macos}/vice/bin/x64sc"
+            else null;
+        in
+        rec {
         emulator86box = pkgs._86box;
 
         vintage-unwrapped = pkgs.python3Packages.buildPythonApplication {
@@ -30,11 +74,11 @@
 
         vintage =
           let
-            # VICE is Linux-only in nixpkgs; wire it only where available so the
-            # Darwin outputs (the 86Box path) still evaluate and build. Nix
-            # laziness means pkgs.vice is never forced on Darwin.
-            viceArg = nixpkgs.lib.optionalString pkgs.stdenv.isLinux
-              "--set VINTAGE_VICE_BIN ${pkgs.vice}/bin/x64sc";
+            # Wire VINTAGE_VICE_BIN only where an x64sc exists (see viceBin
+            # above). optionalString leaves the reference unforced when null,
+            # so unsupported platforms (e.g. x86_64-darwin) still evaluate.
+            viceArg = nixpkgs.lib.optionalString (viceBin != null)
+              "--set VINTAGE_VICE_BIN ${viceBin}";
           in
           pkgs.symlinkJoin {
             name = "vintage";
