@@ -35,14 +35,25 @@ def test_run_prepares_state_links_roms_and_calls_runner(tmp_path):
     assert "boot.img" in (vmdir / "86box.cfg").read_text()  # media injected
 
 
-def test_run_rejects_non_86box(tmp_path, capsys):
+def test_run_dispatches_vice_and_builds_config_argv(tmp_path):
     d = tmp_path / "c64"
+    (d / "media").mkdir(parents=True)
     (d / "state").mkdir(parents=True)
-    (d / "machine.toml").write_text('name = "C64"\nemulator = "vice"\nconfig = "v.cfg"\n')
-    (d / "v.cfg").write_text("")
-    rc = run.cmd_run(tmp_path, "c64", env={}, runner=lambda argv: 0)
-    assert rc == 1
-    assert "vice" in capsys.readouterr().err
+    (d / "machine.toml").write_text(
+        'name = "C64"\nemulator = "vice"\nconfig = "vicerc"\n'
+    )
+    (d / "vicerc").write_text("# bare C64\n")
+    calls = []
+    rc = run.cmd_run(
+        tmp_path,
+        "c64",
+        env={"VINTAGE_VICE_BIN": "/bin/x64sc"},
+        runner=lambda argv: calls.append(argv) or 0,
+    )
+    assert rc == 0
+    vmdir = tmp_path / "c64" / "state"
+    assert calls == [["/bin/x64sc", "-config", str((vmdir / "vicerc").resolve())]]
+    assert (vmdir / "vicerc").is_file()
 
 
 def test_run_errors_without_roms_env(tmp_path, capsys):

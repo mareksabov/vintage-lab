@@ -7,12 +7,13 @@ import sys
 from pathlib import Path
 from typing import Callable, Mapping
 
-from .drivers import emu86box
+from .drivers import emu86box, vice
 from .machine import load_machine
 
 # Emulator name (from machine.toml) -> driver entry point.
 DRIVERS: dict[str, Callable[..., int]] = {
     "86box": emu86box.run,
+    "vice": vice.run,
 }
 
 
