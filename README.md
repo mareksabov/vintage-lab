@@ -170,6 +170,10 @@ This project distributes **no** BIOS ROMs, operating systems, or disk images. Th
 never committed here. You supply your own OS and boot media, for hardware you own,
 into each machine's git-ignored `media/` folder.
 
+For what is worth putting on those machines once they boot — era-appropriate
+games and software per platform, plus legal sources — see
+[docs/game-picks.md](docs/game-picks.md).
+
 ## Roadmap
 
 - A web frontend over the same core (list, run, insert media).
