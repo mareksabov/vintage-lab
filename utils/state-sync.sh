@@ -6,7 +6,7 @@
 #   store   : push state FROM this repo TO the share (run this AFTER you shut the
 #             machine down)
 #
-# Config: utils/state-sync.conf  (SAMBA_DIR, MACHINES, SYNC_DIRS)
+# Config: utils/state-sync.conf  (SAMBA_DIR, MACHINES, SYNC_DIRS, SYNC_EXCLUDES)
 #
 # WARNING: only run this while the emulator is NOT running, and only run a given
 # machine on ONE computer at a time — shared state can corrupt if two machines
@@ -37,6 +37,16 @@ command -v rsync >/dev/null 2>&1 || die "rsync is required but was not found on 
 : "${SAMBA_DIR:?set SAMBA_DIR in $CONFIG}"
 : "${MACHINES:?set MACHINES in $CONFIG}"
 SYNC_DIRS="${SYNC_DIRS:-state}"
+# Names never synced. `state/roms` is a symlink into the Nix store created by the
+# driver (it re-links itself on every run), so it is local-only by nature — and a
+# CIFS share cannot store a symlink at all, which fails the whole transfer.
+# Excluded names are also protected from --delete, so restore leaves them alone.
+SYNC_EXCLUDES="${SYNC_EXCLUDES:-roms}"
+
+EXCLUDE_ARGS=()
+for x in $SYNC_EXCLUDES; do
+  EXCLUDE_ARGS+=("--exclude=$x")
+done
 
 [ $# -ge 1 ] || usage
 ACTION="$1"; shift
@@ -79,7 +89,7 @@ sync_one() {
   total_kb=$(du -sk "$src" 2>/dev/null | awk '{print $1}') || true
   total_kb=${total_kb:-0}
 
-  rsync -a --delete "$src/" "$dst/" &
+  rsync -a --delete ${EXCLUDE_ARGS[@]+"${EXCLUDE_ARGS[@]}"} "$src/" "$dst/" &
   local pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     done_kb=$(du -sk "$dst" 2>/dev/null | awk '{print $1}') || true

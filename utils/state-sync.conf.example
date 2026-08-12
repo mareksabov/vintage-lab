@@ -18,3 +18,9 @@ MACHINES="optiplex-gx"
 # Which per-machine subdirectories to sync. "state" = installed disk + NVRAM,
 # "media" = disk/CD images.
 SYNC_DIRS="state media"
+
+# Names never synced (and never deleted by --delete), space-separated. Leave the
+# default alone unless you know why: `roms` is a symlink into the Nix store that
+# the driver re-creates on every run, and a Samba share cannot store symlinks —
+# trying to sync it aborts the whole transfer.
+SYNC_EXCLUDES="roms"
