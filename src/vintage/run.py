@@ -1,4 +1,4 @@
-"""The `run` command: prepare a machine and launch its emulator."""
+"""The `run` command: dispatch a machine to its emulator driver."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ from typing import Callable, Mapping
 
 from .drivers import emu86box
 from .machine import load_machine
+
+# Emulator name (from machine.toml) -> driver entry point.
+DRIVERS: dict[str, Callable[..., int]] = {
+    "86box": emu86box.run,
+}
 
 
 def _default_runner(argv: list[str]) -> int:
@@ -23,16 +28,13 @@ def cmd_run(
     runner: Callable[[list[str]], int] = _default_runner,
 ) -> int:
     machine = load_machine(root / machine_id)
-    if machine.emulator != "86box":
-        print(f"error: unsupported emulator {machine.emulator!r}", file=sys.stderr)
+    driver = DRIVERS.get(machine.emulator)
+    if driver is None:
+        supported = ", ".join(sorted(DRIVERS))
+        print(
+            f"error: unsupported emulator {machine.emulator!r} "
+            f"(supported: {supported})",
+            file=sys.stderr,
+        )
         return 1
-    roms = env.get("VINTAGE_ROMS_86BOX")
-    if not roms:
-        print("error: VINTAGE_ROMS_86BOX is not set", file=sys.stderr)
-        return 1
-    box_bin = env.get("VINTAGE_86BOX_BIN", "86Box")
-
-    vmdir = emu86box.prepare_vmdir(machine)
-    emu86box.link_roms(vmdir, Path(roms))
-    emu86box.apply_media(machine)
-    return runner(emu86box.build_argv(box_bin, vmdir))
+    return driver(machine, env=env, runner=runner)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Callable, Mapping
 
 from ..cfg import set_values
 from ..machine import Machine
@@ -75,3 +76,21 @@ def build_argv(box_bin: str, vmdir: Path) -> list[str]:
     # on macOS), not the CWD, so a relative path misses our state/roms symlink.
     # Always pass an absolute path.
     return [box_bin, "-P", str(vmdir.resolve())]
+
+
+def run(
+    machine: Machine,
+    *,
+    env: Mapping[str, str],
+    runner: Callable[[list[str]], int],
+) -> int:
+    """Prepare the 86Box VM dir and launch it. Owns 86Box-specific env."""
+    roms = env.get("VINTAGE_ROMS_86BOX")
+    if not roms:
+        print("error: VINTAGE_ROMS_86BOX is not set", file=sys.stderr)
+        return 1
+    box_bin = env.get("VINTAGE_86BOX_BIN", "86Box")
+    vmdir = prepare_vmdir(machine)
+    link_roms(vmdir, Path(roms))
+    apply_media(machine)
+    return runner(build_argv(box_bin, vmdir))

@@ -50,3 +50,17 @@ def test_run_errors_without_roms_env(tmp_path, capsys):
     rc = run.cmd_run(tmp_path, "optiplex-gx", env={}, runner=lambda argv: 0)
     assert rc == 1
     assert "VINTAGE_ROMS_86BOX" in capsys.readouterr().err
+
+
+def test_run_unknown_emulator_lists_supported(tmp_path, capsys):
+    d = tmp_path / "amiga"
+    (d / "state").mkdir(parents=True)
+    (d / "machine.toml").write_text(
+        'name = "Amiga"\nemulator = "fs-uae"\nconfig = "c.cfg"\n'
+    )
+    (d / "c.cfg").write_text("")
+    rc = run.cmd_run(tmp_path, "amiga", env={}, runner=lambda argv: 0)
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "fs-uae" in err
+    assert "86box" in err  # supported set is listed
