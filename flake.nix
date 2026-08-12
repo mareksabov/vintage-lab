@@ -17,7 +17,6 @@
     {
       packages = forAll (system: pkgs: rec {
         emulator86box = pkgs._86box;
-        emulatorVice = pkgs.vice;
 
         vintage-unwrapped = pkgs.python3Packages.buildPythonApplication {
           pname = "vintage";
@@ -29,18 +28,26 @@
           doCheck = false;
         };
 
-        vintage = pkgs.symlinkJoin {
-          name = "vintage";
-          paths = [ vintage-unwrapped ];
-          nativeBuildInputs = [ pkgs.makeWrapper ];
-          postBuild = ''
-            wrapProgram $out/bin/vintage \
-              --set VINTAGE_86BOX_BIN ${emulator86box}/bin/86Box \
-              --set VINTAGE_ROMS_86BOX ${roms86box} \
-              --set VINTAGE_VICE_BIN ${emulatorVice}/bin/x64sc \
-              --prefix PATH : ${pkgs.mtools}/bin
-          '';
-        };
+        vintage =
+          let
+            # VICE is Linux-only in nixpkgs; wire it only where available so the
+            # Darwin outputs (the 86Box path) still evaluate and build. Nix
+            # laziness means pkgs.vice is never forced on Darwin.
+            viceArg = nixpkgs.lib.optionalString pkgs.stdenv.isLinux
+              "--set VINTAGE_VICE_BIN ${pkgs.vice}/bin/x64sc";
+          in
+          pkgs.symlinkJoin {
+            name = "vintage";
+            paths = [ vintage-unwrapped ];
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postBuild = ''
+              wrapProgram $out/bin/vintage \
+                --set VINTAGE_86BOX_BIN ${emulator86box}/bin/86Box \
+                --set VINTAGE_ROMS_86BOX ${roms86box} \
+                ${viceArg} \
+                --prefix PATH : ${pkgs.mtools}/bin
+            '';
+          };
 
         default = vintage;
       });

@@ -4,8 +4,9 @@ Facts recorded while wiring the C64 machine against VICE on `aarch64-darwin`.
 
 ## Binary
 
-The C64 emulator binary is `x64sc` (cycle-accurate). The flake wires
-`VINTAGE_VICE_BIN = ${pkgs.vice}/bin/x64sc`.
+The C64 emulator binary is `x64sc` (cycle-accurate). On Linux, the flake
+wires `VINTAGE_VICE_BIN = ${pkgs.vice}/bin/x64sc` via `wrapProgram`. On macOS
+this env var is NOT set (see Platform availability below).
 
 ## ROMs
 
@@ -20,11 +21,13 @@ the versioned template into the machine's gitignored `state/` on first run, so
 runtime tweaks persist there. Media is attached on the command line (`-8
 <disk.d64>`), not via the config file.
 
-## Platform availability — KNOWN ISSUE (aarch64-darwin)
+## Platform availability
+
+### nixpkgs `vice` is Linux-only
 
 `pkgs.vice` in `nixpkgs-unstable` (vice-3.10) declares
 `meta.platforms = [ "x86_64-linux" "aarch64-linux" ... ]` — Linux only.
-On this host (`aarch64-darwin`) the evaluation fails:
+Attempting to evaluate it on `aarch64-darwin` throws:
 
 ```
 error: Refusing to evaluate package 'vice-3.10' …
@@ -32,30 +35,51 @@ error: Refusing to evaluate package 'vice-3.10' …
          hostPlatform.system = "aarch64-darwin"
 ```
 
-Confirmed by:
-- `nix flake check --no-build` → exits with error on `packages.aarch64-darwin.emulatorVice`
-- `nix eval --raw .#packages.aarch64-darwin.emulatorVice.outPath` → same error
+### How the flake handles this (as of this fix)
 
-The flake.nix edit is applied exactly as specified (Task 6 brief):
-`emulatorVice = pkgs.vice;` and `--set VINTAGE_VICE_BIN ${emulatorVice}/bin/x64sc \`
-are in place for when a Linux build host (or a future darwin-compatible VICE
-package) is used.
+The flake wires `VINTAGE_VICE_BIN` **only on Linux** using
+`nixpkgs.lib.optionalString pkgs.stdenv.isLinux`. Because this is a pure Nix
+string expression evaluated at derivation-build time (not IFD), `pkgs.vice` is
+never forced on Darwin — Nix laziness keeps the Darwin outputs clean.
 
-**Action required by the controller:** decide how to proceed on aarch64-darwin.
-Options include:
-1. Build VICE from source with `pkgs.vice.override { ... }` bypassing the
-   platform guard (risky; SDL2 / X11 deps may not build cleanly on macOS).
-2. Use a Linux remote builder / nix build farm for the `emulatorVice` derivation.
-3. Source VICE for macOS via Homebrew or a separate flake input, referencing the
-   macOS binary and stubbing out the nixpkgs attribute for darwin.
-4. Accept that `vintage run c64` is Linux-only for now; guard the driver with a
-   platform check and document accordingly.
+Result:
+- On **Linux**: `wrapProgram` sets `VINTAGE_VICE_BIN=/nix/store/.../bin/x64sc`.
+  `vintage run c64` works as designed.
+- On **macOS**: `VINTAGE_VICE_BIN` is absent from the wrapper environment.
+  The VICE driver falls back to its default behaviour — looking for `x64sc` on
+  `PATH`. If `x64sc` is not on `PATH`, the driver will fail to launch; the user
+  will see a "binary not found" / "VINTAGE_VICE_BIN is not set" style error
+  from the launcher. The **86Box path is unaffected** and continues to work.
+
+Verified on `aarch64-darwin` (this host, 2026-08-12):
+- `nix eval --raw .#packages.aarch64-darwin.vintage.outPath` →
+  `/nix/store/1k64lnzqims6fkc0s4rrbz6a4csrzqwh-vintage` (success)
+- `nix flake check --no-build` → `all checks passed!` (no vice throw)
+- `nix eval --raw .#packages.x86_64-linux.vintage.outPath` →
+  `/nix/store/a6bjhpm3r8kdsh6b1vkxrgy268sjrpgd-vintage` (success; vice arg
+  included in the Linux derivation string; does not force a build of vice)
+
+### macOS VICE support — open decision
+
+Running `vintage run c64` on macOS currently fails at emulator launch because
+`VINTAGE_VICE_BIN` is unset and `x64sc` is unlikely to be on `PATH`. Options
+for macOS support (none implemented; controller decision required):
+
+1. **Remote Linux builder**: build the Linux closure on a Linux host and deploy
+   to macOS (no macOS VICE binary needed; closest to the current nixpkgs path).
+2. **Separate macOS VICE binary input**: add a flake input or overlay that
+   provides a Darwin-compatible `x64sc` build (e.g. sourced from a third-party
+   flake or built from source with macOS-compatible deps).
+3. **Homebrew shim**: document that users install VICE via Homebrew (`brew
+   install vice`) and add `x64sc` to `PATH` before calling `vintage run c64`.
+   The launcher will pick it up without any flake changes.
+4. **Accept Linux-only for VICE**: guard the C64 driver with an explicit
+   platform check; document `vintage run c64` as Linux-only.
 
 ## What was NOT verified (requires build + runtime)
 
-Because `pkgs.vice` does not evaluate on this host, the following facts from the
-spec could NOT be confirmed and remain expected / to be confirmed by the
-controller's build + first run on a supported platform:
+Because `pkgs.vice` does not evaluate on this host, the following facts could
+NOT be confirmed and remain expected / pending verification on a Linux host:
 
 - ROM discovery actually works at runtime (VICE finds its bundled ROMs through
   the nixpkgs wrapper without any extra flags).
@@ -64,11 +88,12 @@ controller's build + first run on a supported platform:
 - The `vicerc` template in `machines/c64/vicerc` is accepted without error by
   the version of VICE that nixpkgs ships.
 
-## Verified on aarch64-darwin
+## Verified on aarch64-darwin (this host)
 
 - `PYTHONPATH=src pytest -q` → 37 passed (full suite green).
+- `nix flake check --no-build` → all checks passed (no vice throw; Darwin 86Box
+  path evaluates cleanly).
+- Both `aarch64-darwin.vintage` and `x86_64-linux.vintage` outPaths evaluate
+  successfully.
 - `flake.nix` evaluates correctly for `packages.aarch64-darwin.emulator86box`
-  and `packages.aarch64-darwin.vintage-unwrapped`; only `emulatorVice` is
-  blocked by the platform guard.
-- The wrapProgram call is syntactically correct and would set `VINTAGE_VICE_BIN`
-  on platforms where `pkgs.vice` is available.
+  and `packages.aarch64-darwin.vintage-unwrapped`.
