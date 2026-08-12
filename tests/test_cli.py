@@ -50,3 +50,27 @@ def test_main_list_dispatch(machine_root, capsys):
     rc = cli.main(["--machines", str(machine_root), "list"])
     assert rc == 0
     assert "optiplex-gx" in capsys.readouterr().out
+
+
+def test_cmd_new_vice_scaffolds_vicerc(tmp_path):
+    rc = cli.cmd_new(tmp_path, "c64", emulator="vice")
+    assert rc == 0
+    d = tmp_path / "c64"
+    toml = (d / "machine.toml").read_text()
+    assert 'emulator = "vice"' in toml
+    assert 'config   = "vicerc"' in toml
+    assert (d / "vicerc").is_file()
+    assert not (d / "86box.cfg").exists()
+
+
+def test_cmd_new_rejects_unknown_emulator(tmp_path, capsys):
+    rc = cli.cmd_new(tmp_path, "x", emulator="atari")
+    assert rc == 1
+    assert "atari" in capsys.readouterr().err
+    assert not (tmp_path / "x").exists()
+
+
+def test_main_new_emulator_flag(tmp_path):
+    rc = cli.main(["--machines", str(tmp_path), "new", "c64", "--emulator", "vice"])
+    assert rc == 0
+    assert (tmp_path / "c64" / "vicerc").is_file()

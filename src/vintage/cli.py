@@ -11,11 +11,22 @@ from typing import Mapping, TextIO
 
 from .machine import discover_machines
 
-_TEMPLATE_TOML = (
-    'name     = "{name}"\n'
-    'emulator = "86box"\n'
-    'config   = "86box.cfg"\n'
-)
+# Emulator -> (native config filename, starter config body).
+_EMULATOR_TEMPLATES: dict[str, tuple[str, str]] = {
+    "86box": ("86box.cfg", "[General]\n"),
+    "vice": (
+        "vicerc",
+        "# VICE configuration; hardware defaults come from VICE.\n",
+    ),
+}
+
+
+def _machine_toml(name: str, emulator: str, config: str) -> str:
+    return (
+        f'name     = "{name}"\n'
+        f'emulator = "{emulator}"\n'
+        f'config   = "{config}"\n'
+    )
 
 
 def machines_root(env: Mapping[str, str] | None = None) -> Path:
@@ -30,15 +41,24 @@ def cmd_list(root: Path, out: TextIO) -> int:
     return 0
 
 
-def cmd_new(root: Path, name: str) -> int:
+def cmd_new(root: Path, name: str, emulator: str = "86box") -> int:
+    template = _EMULATOR_TEMPLATES.get(emulator)
+    if template is None:
+        supported = ", ".join(sorted(_EMULATOR_TEMPLATES))
+        print(
+            f"error: unknown emulator {emulator!r} (supported: {supported})",
+            file=sys.stderr,
+        )
+        return 1
     dest = root / name
     if dest.exists():
         print(f"error: machine {name!r} already exists", file=sys.stderr)
         return 1
+    config_name, config_body = template
     (dest / "media").mkdir(parents=True)
     (dest / "state").mkdir(parents=True)
-    (dest / "machine.toml").write_text(_TEMPLATE_TOML.format(name=name))
-    (dest / "86box.cfg").write_text("[General]\n")
+    (dest / "machine.toml").write_text(_machine_toml(name, emulator, config_name))
+    (dest / config_name).write_text(config_body)
     return 0
 
 
@@ -62,6 +82,12 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("list", help="list machines")
     p_new = sub.add_parser("new", help="scaffold a new machine")
     p_new.add_argument("name")
+    p_new.add_argument(
+        "--emulator",
+        default="86box",
+        choices=sorted(_EMULATOR_TEMPLATES),
+        help="emulator for the new machine (default: 86box)",
+    )
     p_dup = sub.add_parser("duplicate", help="copy a machine")
     p_dup.add_argument("src")
     p_dup.add_argument("dst")
@@ -83,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "list":
         return cmd_list(root, sys.stdout)
     if args.command == "new":
-        return cmd_new(root, args.name)
+        return cmd_new(root, args.name, args.emulator)
     if args.command == "duplicate":
         return cmd_duplicate(root, args.src, args.dst)
     if args.command == "run":
