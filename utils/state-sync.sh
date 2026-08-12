@@ -30,7 +30,7 @@ usage() {
 }
 
 command -v rsync >/dev/null 2>&1 || die "rsync is required but was not found on PATH"
-[ -f "$CONFIG" ] || die "config not found: $CONFIG"
+[ -f "$CONFIG" ] || die "config not found: $CONFIG (copy state-sync.conf.example to state-sync.conf and edit it)"
 # shellcheck disable=SC1090
 . "$CONFIG"
 
@@ -50,6 +50,18 @@ confirm() {
   [ "$ans" = "y" ] || [ "$ans" = "Y" ]
 }
 
+# Map a local machine subdir to its group folder on the share:
+#   state -> states/<machine>    media -> media/<machine>
+remote_dir() {
+  # $1 = machine, $2 = sync dir
+  local group
+  case "$2" in
+    state) group="states" ;;
+    *)     group="$2" ;;
+  esac
+  echo "$SAMBA_DIR/$group/$1"
+}
+
 sync_one() {
   # $1 = source dir, $2 = destination dir, $3 = human label
   local src="$1" dst="$2" label="$3"
@@ -62,24 +74,26 @@ sync_one() {
   echo "  ok:   $label"
 }
 
-[ -d "$SAMBA_DIR" ] || die "SAMBA_DIR not reachable (is the share mounted?): $SAMBA_DIR"
-
 case "$ACTION" in
   store)
     confirm "Push local state -> $SAMBA_DIR (overwrites the share). Continue?" || exit 1
+    mkdir -p "$SAMBA_DIR" 2>/dev/null \
+      || die "cannot reach/create $SAMBA_DIR (is the share mounted and writable?)"
     for m in $MACHINES; do
       echo "$m:"
       for d in $SYNC_DIRS; do
-        sync_one "$REPO_ROOT/machines/$m/$d" "$SAMBA_DIR/$m/$d" "$m/$d  ->  share"
+        sync_one "$REPO_ROOT/machines/$m/$d" "$(remote_dir "$m" "$d")" "$m/$d  ->  share"
       done
     done
     ;;
   restore)
+    [ -d "$SAMBA_DIR" ] \
+      || { echo "nothing on the share yet ($SAMBA_DIR) — run 'store' first"; exit 0; }
     confirm "Pull state from $SAMBA_DIR -> local (overwrites local). Continue?" || exit 1
     for m in $MACHINES; do
       echo "$m:"
       for d in $SYNC_DIRS; do
-        sync_one "$SAMBA_DIR/$m/$d" "$REPO_ROOT/machines/$m/$d" "share  ->  $m/$d"
+        sync_one "$(remote_dir "$m" "$d")" "$REPO_ROOT/machines/$m/$d" "share  ->  $m/$d"
       done
     done
     ;;

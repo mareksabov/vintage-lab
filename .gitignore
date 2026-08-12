@@ -18,3 +18,6 @@ roms-result
 
 # Local agent/workflow scratch (briefs, ledgers, review packages)
 .superpowers/
+
+# Local per-machine config (paths differ between Mac and Linux)
+utils/state-sync.conf

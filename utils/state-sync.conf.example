@@ -1,0 +1,20 @@
+# Example config for state-sync.sh.
+# Copy this to `state-sync.conf` (which is git-ignored) and edit it per machine,
+# because the mounted share path differs between computers.
+
+# Where the shared state lives — an ALREADY-MOUNTED Samba path on THIS machine.
+#   macOS: connect to smb://<server> in Finder (Cmd+K); it mounts under
+#          /Volumes/<share>, e.g. SAMBA_DIR="/Volumes/MarkySMB/vintage-labs"
+#   Linux: mount the CIFS share (e.g. via /etc/fstab) and point at it, e.g.
+#          SAMBA_DIR="/mnt/samba/vintage-labs"
+#
+# On the share the layout is:  <SAMBA_DIR>/<group>/<machine>/
+#   state -> states/<machine>      media -> media/<machine>
+SAMBA_DIR="/Volumes/CHANGE-ME/vintage-labs"
+
+# Which machines (folder names under machines/) to sync, space-separated.
+MACHINES="optiplex-gx"
+
+# Which per-machine subdirectories to sync. "state" = installed disk + NVRAM,
+# "media" = disk/CD images.
+SYNC_DIRS="state media"
