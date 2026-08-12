@@ -20,6 +20,27 @@ SLOT_FLAGS: dict[str, str] = {
     "drive8": "-8",
 }
 
+# VICE machine model -> emulator binary name (all live in one bin/ dir).
+MODEL_BINARIES: dict[str, str] = {
+    "c64": "x64sc",
+    "vic20": "xvic",
+}
+
+
+def resolve_binary(model: str, env: Mapping[str, str]) -> str:
+    """Resolve the VICE binary for a machine model.
+
+    Joins the binary name onto VINTAGE_VICE_BIN_DIR when set (Nix wiring);
+    otherwise returns the bare name for a PATH lookup (dev shell / tests).
+    """
+    try:
+        name = MODEL_BINARIES[model]
+    except KeyError:
+        known = ", ".join(sorted(MODEL_BINARIES))
+        raise ValueError(f"unknown vice model: {model!r} (known: {known})")
+    bindir = env.get("VINTAGE_VICE_BIN_DIR")
+    return str(Path(bindir) / name) if bindir else name
+
 
 def prepare_vmdir(machine: Machine) -> Path:
     """Ensure state/ exists and holds a working copy of the native config.
@@ -64,7 +85,8 @@ def run(
     env: Mapping[str, str],
     runner: Callable[[list[str]], int],
 ) -> int:
-    vice_bin = env.get("VINTAGE_VICE_BIN", "x64sc")
+    model = str(machine.options.get("model", "c64"))
+    vice_bin = resolve_binary(model, env)
     vmdir = prepare_vmdir(machine)
     config_path = vmdir / machine.config
     return runner(build_argv(vice_bin, config_path, media_args(machine)))

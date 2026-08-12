@@ -47,7 +47,7 @@ def test_run_dispatches_vice_and_builds_config_argv(tmp_path):
     rc = run.cmd_run(
         tmp_path,
         "c64",
-        env={"VINTAGE_VICE_BIN": "/bin/x64sc"},
+        env={"VINTAGE_VICE_BIN_DIR": "/bin"},
         runner=lambda argv: calls.append(argv) or 0,
     )
     assert rc == 0

@@ -81,3 +81,38 @@ def test_run_dispatches_with_default_binary(tmp_path):
     assert rc == 0
     cfg = (m.state_dir / "vicerc").resolve()
     assert calls == [["x64sc", "-config", str(cfg)]]
+
+
+def test_resolve_binary_c64_and_vic20_join_bin_dir():
+    env = {"VINTAGE_VICE_BIN_DIR": "/opt/vice/bin"}
+    assert vice.resolve_binary("c64", env) == "/opt/vice/bin/x64sc"
+    assert vice.resolve_binary("vic20", env) == "/opt/vice/bin/xvic"
+
+
+def test_resolve_binary_falls_back_to_bare_name_without_env():
+    assert vice.resolve_binary("vic20", {}) == "xvic"
+
+
+def test_resolve_binary_unknown_model_raises():
+    with pytest.raises(ValueError, match="unknown vice model"):
+        vice.resolve_binary("plus4", {})
+
+
+def test_run_uses_vic20_binary_from_model(tmp_path):
+    d = tmp_path / "vic20"
+    (d / "media").mkdir(parents=True)
+    (d / "state").mkdir(parents=True)
+    (d / "machine.toml").write_text(
+        'name = "VIC-20"\nemulator = "vice"\nmodel = "vic20"\nconfig = "vicerc"\n'
+    )
+    (d / "vicerc").write_text("# bare\n")
+    m = load_machine(d)
+    calls = []
+    rc = vice.run(
+        m,
+        env={"VINTAGE_VICE_BIN_DIR": "/opt/vice/bin"},
+        runner=lambda argv: calls.append(argv) or 0,
+    )
+    assert rc == 0
+    cfg = (m.state_dir / "vicerc").resolve()
+    assert calls == [["/opt/vice/bin/xvic", "-config", str(cfg)]]
