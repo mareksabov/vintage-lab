@@ -192,7 +192,7 @@ games and software per platform, plus legal sources — see
 
 ## Roadmap
 
-- A web frontend over the same core (list, run, insert media).
+- A frontend over the same core (list, run, insert media).
 - Remote access, so a server-hosted machine is usable from another device.
 - More emulators behind the same launcher (Commodore via VICE already ships —
   C64 and VIC-20; Amiga via FS-UAE next).
