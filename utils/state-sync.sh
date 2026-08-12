@@ -62,6 +62,8 @@ remote_dir() {
   echo "$SAMBA_DIR/$group/$1"
 }
 
+SYNCED=0
+
 sync_one() {
   # $1 = source dir, $2 = destination dir, $3 = human label
   local src="$1" dst="$2" label="$3"
@@ -94,6 +96,7 @@ sync_one() {
   wait "$pid" || rc=$?
 
   if [ "$rc" -eq 0 ]; then
+    SYNCED=$((SYNCED + 1))
     printf '\r  ok:   %s (%d MB)                         \n' "$label" "$((total_kb/1024))"
   else
     printf '\r  FAIL: %s (rsync exit %d)                 \n' "$label" "$rc"
@@ -101,11 +104,19 @@ sync_one() {
   return "$rc"
 }
 
+# The share must already be mounted. We deliberately do NOT create SAMBA_DIR:
+# on an unmounted mount point that would silently write to the local disk
+# instead of the share.
+require_share() {
+  [ -d "$SAMBA_DIR" ] || die "cannot reach $SAMBA_DIR — is the share mounted on this computer?
+       SAMBA_DIR is per-computer; check it in $CONFIG
+       (macOS mounts under /Volumes/<share>, Linux wherever you mounted the CIFS share)"
+}
+
 case "$ACTION" in
   store)
+    require_share
     confirm "Push local state -> $SAMBA_DIR (overwrites the share). Continue?" || exit 1
-    mkdir -p "$SAMBA_DIR" 2>/dev/null \
-      || die "cannot reach/create $SAMBA_DIR (is the share mounted and writable?)"
     for m in $MACHINES; do
       echo "$m:"
       for d in $SYNC_DIRS; do
@@ -114,8 +125,7 @@ case "$ACTION" in
     done
     ;;
   restore)
-    [ -d "$SAMBA_DIR" ] \
-      || { echo "nothing on the share yet ($SAMBA_DIR) — run 'store' first"; exit 0; }
+    require_share
     confirm "Pull state from $SAMBA_DIR -> local (overwrites local). Continue?" || exit 1
     for m in $MACHINES; do
       echo "$m:"
@@ -123,6 +133,8 @@ case "$ACTION" in
         sync_one "$(remote_dir "$m" "$d")" "$REPO_ROOT/machines/$m/$d" "share  ->  $m/$d"
       done
     done
+    [ "$SYNCED" -gt 0 ] \
+      || die "the share is reachable but holds nothing for: $MACHINES — run 'store' on the computer that has the state"
     ;;
   *)
     usage
