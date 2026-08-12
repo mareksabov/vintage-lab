@@ -59,11 +59,33 @@ def test_media_args_unknown_slot_raises(tmp_path):
     m = load_machine(
         _make_c64(
             tmp_path,
-            media='[[media]]\nslot = "tape"\nfile = "media/x.tap"\n',
+            media='[[media]]\nslot = "printer"\nfile = "media/x.bin"\n',
         )
     )
-    with pytest.raises(ValueError, match="tape"):
+    with pytest.raises(ValueError, match="printer"):
         vice.media_args(m)
+
+
+@pytest.mark.parametrize(
+    "slot,flag,fname",
+    [
+        ("tape", "-1", "game.tap"),
+        ("cart", "-cartcrt", "game.crt"),
+        ("autostart", "-autostart", "game.prg"),
+    ],
+)
+def test_media_args_new_slots_map_to_flags(tmp_path, slot, flag, fname):
+    m = load_machine(
+        _make_c64(
+            tmp_path,
+            media=f'[[media]]\nslot = "{slot}"\nfile = "media/{fname}"\n',
+        )
+    )
+    (m.path / "media" / fname).write_text("x")
+    args = vice.media_args(m)
+    expected = str((m.path / "media" / fname).resolve())
+    assert args == [flag, expected]
+    assert Path(args[1]).is_absolute()
 
 
 def test_build_argv_has_config_then_media(tmp_path):

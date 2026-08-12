@@ -15,9 +15,12 @@ from typing import Callable, Mapping
 
 from ..machine import Machine
 
-# Media slot -> VICE command-line flag.
+# Media slot -> VICE command-line flag. Flags are identical in x64sc and xvic.
 SLOT_FLAGS: dict[str, str] = {
-    "drive8": "-8",
+    "drive8": "-8",             # disk image in drive 8
+    "tape": "-1",              # datasette tape image (attach; load by hand)
+    "cart": "-cartcrt",        # CRT-format cartridge image
+    "autostart": "-autostart",  # attach and auto-run a program/image
 }
 
 # VICE machine model -> emulator binary name (all live in one bin/ dir).
