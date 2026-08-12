@@ -15,6 +15,18 @@ def _make_c64(root: Path, *, media: str = "") -> Path:
     return d
 
 
+def _make_vice(root: Path, *, model: str, extra: str = "") -> Path:
+    d = root / model
+    (d / "media").mkdir(parents=True)
+    (d / "state").mkdir(parents=True)
+    (d / "machine.toml").write_text(
+        f'name = "{model}"\nemulator = "vice"\nmodel = "{model}"\n'
+        f'config = "vicerc"\n' + extra
+    )
+    (d / "vicerc").write_text("# bare\n")
+    return d
+
+
 def test_prepare_vmdir_copies_template_once(tmp_path):
     m = load_machine(_make_c64(tmp_path))
     vm = vice.prepare_vmdir(m)
@@ -138,3 +150,40 @@ def test_run_uses_vic20_binary_from_model(tmp_path):
     assert rc == 0
     cfg = (m.state_dir / "vicerc").resolve()
     assert calls == [["/opt/vice/bin/xvic", "-config", str(cfg)]]
+
+
+def test_ram_args_none_when_absent(tmp_path):
+    m = load_machine(_make_vice(tmp_path, model="vic20"))
+    assert vice.ram_args(m) == []
+
+
+def test_ram_args_vic20_memory(tmp_path):
+    m = load_machine(_make_vice(tmp_path, model="vic20", extra='ram = "24k"\n'))
+    assert vice.ram_args(m) == ["-memory", "24k"]
+
+
+def test_ram_args_c64_reu(tmp_path):
+    m = load_machine(_make_vice(tmp_path, model="c64", extra='ram = "reu"\n'))
+    assert vice.ram_args(m) == ["-reu"]
+
+
+def test_ram_args_vic20_bad_value_raises(tmp_path):
+    m = load_machine(_make_vice(tmp_path, model="vic20", extra='ram = "reu"\n'))
+    with pytest.raises(ValueError, match="vic20"):
+        vice.ram_args(m)
+
+
+def test_run_places_ram_before_media(tmp_path):
+    d = _make_vice(
+        tmp_path,
+        model="vic20",
+        extra='ram = "24k"\n[[media]]\nslot = "drive8"\nfile = "media/g.d64"\n',
+    )
+    (d / "media" / "g.d64").write_text("x")
+    m = load_machine(d)
+    calls = []
+    vice.run(m, env={}, runner=lambda argv: calls.append(argv) or 0)
+    argv = calls[0]
+    assert argv[0] == "xvic"
+    assert "-memory" in argv and "-8" in argv
+    assert argv.index("-memory") < argv.index("-8")

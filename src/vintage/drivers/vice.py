@@ -59,6 +59,28 @@ def prepare_vmdir(machine: Machine) -> Path:
     return vmdir
 
 
+# VIC-20 memory-expansion specs accepted by `xvic -memory <spec>`.
+VIC20_MEMORY: frozenset[str] = frozenset({"3k", "8k", "16k", "24k", "all"})
+
+
+def ram_args(machine: Machine) -> list[str]:
+    """Translate the optional `ram` knob into VICE flags (model-aware)."""
+    ram = machine.options.get("ram")
+    if ram is None:
+        return []
+    model = str(machine.options.get("model", "c64"))
+    if model == "vic20":
+        if ram not in VIC20_MEMORY:
+            choices = ", ".join(sorted(VIC20_MEMORY))
+            raise ValueError(f"unsupported ram {ram!r} for vic20 (choose: {choices})")
+        return ["-memory", str(ram)]
+    if model == "c64":
+        if ram != "reu":
+            raise ValueError(f"unsupported ram {ram!r} for c64 (choose: reu)")
+        return ["-reu"]
+    raise ValueError(f"ram not supported for vice model {model!r}")
+
+
 def media_args(machine: Machine) -> list[str]:
     """Translate the declarative [[media]] set into VICE CLI flags."""
     args: list[str] = []
@@ -92,4 +114,5 @@ def run(
     vice_bin = resolve_binary(model, env)
     vmdir = prepare_vmdir(machine)
     config_path = vmdir / machine.config
-    return runner(build_argv(vice_bin, config_path, media_args(machine)))
+    extra = ram_args(machine) + media_args(machine)
+    return runner(build_argv(vice_bin, config_path, extra))
