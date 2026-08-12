@@ -13,7 +13,7 @@
 SAMBA_DIR="/Volumes/CHANGE-ME/vintage-labs"
 
 # Which machines (folder names under machines/) to sync, space-separated.
-MACHINES="optiplex-gx"
+MACHINES="optiplex-gx c64"
 
 # Which per-machine subdirectories to sync. "state" = installed disk + NVRAM,
 # "media" = disk/CD images.
