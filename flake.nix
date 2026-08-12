@@ -17,6 +17,7 @@
     {
       packages = forAll (system: pkgs: rec {
         emulator86box = pkgs._86box;
+        emulatorVice = pkgs.vice;
 
         vintage-unwrapped = pkgs.python3Packages.buildPythonApplication {
           pname = "vintage";
@@ -36,6 +37,7 @@
             wrapProgram $out/bin/vintage \
               --set VINTAGE_86BOX_BIN ${emulator86box}/bin/86Box \
               --set VINTAGE_ROMS_86BOX ${roms86box} \
+              --set VINTAGE_VICE_BIN ${emulatorVice}/bin/x64sc \
               --prefix PATH : ${pkgs.mtools}/bin
           '';
         };
