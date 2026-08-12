@@ -1,0 +1,4 @@
+# VICE configuration for a bare Commodore 64 (x64sc).
+# Hardware defaults come from VICE. The launcher copies this file into the
+# machine's gitignored state/ on first run; VICE reads and writes that working
+# copy, so runtime tweaks persist there without touching this template.

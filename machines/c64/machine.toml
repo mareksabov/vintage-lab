@@ -1,0 +1,8 @@
+name     = "Commodore 64"
+emulator = "vice"
+config   = "vicerc"
+
+# Optional: attach a disk image in drive 8 (user-provided, gitignored).
+# [[media]]
+# slot = "drive8"
+# file = "media/demo.d64"

@@ -2,6 +2,15 @@ from pathlib import Path
 from vintage.machine import Machine, Media, load_machine, discover_machines
 
 
+def test_shipped_c64_machine_loads():
+    repo_machines = Path(__file__).resolve().parents[1] / "machines"
+    m = load_machine(repo_machines / "c64")
+    assert m.emulator == "vice"
+    assert m.config == "vicerc"
+    assert m.media == ()  # boots to READY. with no user media
+    assert (repo_machines / "c64" / "vicerc").is_file()
+
+
 def test_load_machine_parses_fields_and_media(machine_root: Path):
     m = load_machine(machine_root / "optiplex-gx")
     assert m.id == "optiplex-gx"
