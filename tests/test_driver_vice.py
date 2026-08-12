@@ -187,3 +187,39 @@ def test_run_places_ram_before_media(tmp_path):
     assert argv[0] == "xvic"
     assert "-memory" in argv and "-8" in argv
     assert argv.index("-memory") < argv.index("-8")
+
+
+def test_run_stamps_config_version_from_env(tmp_path):
+    # Without a [Version] tag VICE pops a warning dialog on every boot.
+    m = load_machine(_make_c64(tmp_path))
+    vice.run(m, env={"VINTAGE_VICE_VERSION": "3.10"}, runner=lambda argv: 0)
+    text = (m.state_dir / "vicerc").read_text()
+    assert text.startswith("# bare C64\n")  # template body untouched
+    assert "[Version]" in text
+    assert "ConfigVersion=3.10" in text
+
+
+def test_version_stamp_written_only_once(tmp_path):
+    m = load_machine(_make_c64(tmp_path))
+    env = {"VINTAGE_VICE_VERSION": "3.10"}
+    vice.run(m, env=env, runner=lambda argv: 0)
+    first = (m.state_dir / "vicerc").read_text()
+    vice.run(m, env=env, runner=lambda argv: 0)
+    assert (m.state_dir / "vicerc").read_text() == first
+    assert first.count("[Version]") == 1
+
+
+def test_existing_version_tag_is_never_rewritten(tmp_path):
+    # A config VICE itself saved carries its own tag; a mismatch is a real
+    # signal for the user, not something the launcher should paper over.
+    m = load_machine(_make_c64(tmp_path))
+    cfg = m.state_dir / "vicerc"
+    cfg.write_text("[Version]\nConfigVersion=3.9\n")
+    vice.run(m, env={"VINTAGE_VICE_VERSION": "3.10"}, runner=lambda argv: 0)
+    assert cfg.read_text() == "[Version]\nConfigVersion=3.9\n"
+
+
+def test_run_without_version_env_leaves_config_untouched(tmp_path):
+    m = load_machine(_make_c64(tmp_path))
+    vice.run(m, env={}, runner=lambda argv: 0)
+    assert (m.state_dir / "vicerc").read_text() == "# bare C64\n"

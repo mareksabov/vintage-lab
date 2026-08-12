@@ -6,6 +6,10 @@ config   = "86box.cfg"
 slot = "cdrom"
 file = "media/win98se.iso"
 
-[[media]]
-slot = "floppy_a"
-file = "media/dos-boot.img"
+# Floppy A stays empty; boot comes off the CD-ROM. Uncomment to put the DOS
+# boot floppy back in the drive. Leaving the block in with an empty `file`
+# would not disconnect the drive: an empty path resolves to the machine
+# directory, which exists, so it is mounted as the image without a warning.
+# [[media]]
+# slot = "floppy_a"
+# file = "media/dos-boot.img"

@@ -29,6 +29,9 @@ MODEL_BINARIES: dict[str, str] = {
     "vic20": "xvic",
 }
 
+# Config section holding VICE's own version stamp (see stamp_version).
+VERSION_SECTION = "Version"
+
 
 def resolve_binary(model: str, env: Mapping[str, str]) -> str:
     """Resolve the VICE binary for a machine model.
@@ -81,6 +84,28 @@ def ram_args(machine: Machine) -> list[str]:
     raise ValueError(f"ram not supported for vice model {model!r}")
 
 
+def stamp_version(config_path: Path, version: str) -> None:
+    """Append VICE's `[Version]` tag to the working copy if it has none.
+
+    VICE stamps `ConfigVersion` into every config it saves and warns on load
+    when the tag is missing ("No version tag found in configuration file") —
+    which is every fresh copy of our template. The tag belongs in state/, not
+    in the versioned template: the expected value is whichever VICE the flake
+    pinned for this platform (3.10 on Linux, 3.9 on macOS), and a wrong value
+    trades the missing-tag warning for a version-mismatch one.
+
+    An existing tag is left alone: VICE wrote it when the user saved settings,
+    and a mismatch after a VICE bump is a real signal, not ours to suppress.
+    """
+    text = config_path.read_text()
+    if any(line.strip() == f"[{VERSION_SECTION}]" for line in text.splitlines()):
+        return
+    lead = "" if text.endswith("\n") or not text else "\n"
+    config_path.write_text(
+        f"{text}{lead}\n[{VERSION_SECTION}]\nConfigVersion={version}\n"
+    )
+
+
 def media_args(machine: Machine) -> list[str]:
     """Translate the declarative [[media]] set into VICE CLI flags."""
     args: list[str] = []
@@ -114,5 +139,8 @@ def run(
     vice_bin = resolve_binary(model, env)
     vmdir = prepare_vmdir(machine)
     config_path = vmdir / machine.config
+    version = env.get("VINTAGE_VICE_VERSION")
+    if version:
+        stamp_version(config_path, version)
     extra = ram_args(machine) + media_args(machine)
     return runner(build_argv(vice_bin, config_path, extra))

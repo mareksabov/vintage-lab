@@ -52,10 +52,20 @@
 
           # Directory holding the VICE binaries (x64sc, xvic, ...) per platform:
           # nixpkgs on Linux, the prebuilt app on aarch64-darwin, nothing
-          # elsewhere. The driver joins the per-model binary name onto this dir.
-          viceBinDir =
-            if pkgs.stdenv.isLinux then "${pkgs.vice}/bin"
-            else if system == "aarch64-darwin" then "${vice-macos}/vice/bin"
+          # elsewhere. The driver joins the per-model binary name onto binDir.
+          # `version` travels with it: the driver stamps it into the machine's
+          # state/vicerc so VICE stops warning about a config with no version
+          # tag, and the value has to match whichever VICE runs here (3.10 from
+          # nixpkgs on Linux vs 3.9 in the macOS DMG).
+          vice =
+            if pkgs.stdenv.isLinux then {
+              binDir = "${pkgs.vice}/bin";
+              version = pkgs.vice.version;
+            }
+            else if system == "aarch64-darwin" then {
+              binDir = "${vice-macos}/vice/bin";
+              version = vice-macos.version;
+            }
             else null;
         in
         rec {
@@ -73,12 +83,11 @@
 
         vintage =
           let
-            # Wire VINTAGE_VICE_BIN_DIR only where the VICE binaries exist (see
-            # viceBinDir above). optionalString leaves the reference unforced
-            # when null, so unsupported platforms (e.g. x86_64-darwin) still
-            # evaluate.
-            viceArg = nixpkgs.lib.optionalString (viceBinDir != null)
-              "--set VINTAGE_VICE_BIN_DIR ${viceBinDir}";
+            # Wire the VICE env vars only where the binaries exist (see `vice`
+            # above). optionalString leaves the reference unforced when null,
+            # so unsupported platforms (e.g. x86_64-darwin) still evaluate.
+            viceArg = nixpkgs.lib.optionalString (vice != null)
+              "--set VINTAGE_VICE_BIN_DIR ${vice.binDir} --set VINTAGE_VICE_VERSION ${vice.version}";
           in
           pkgs.symlinkJoin {
             name = "vintage";

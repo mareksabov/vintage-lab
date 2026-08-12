@@ -8,7 +8,10 @@ def test_shipped_c64_machine_loads():
     assert m.emulator == "vice"
     assert m.config == "vicerc"
     assert m.media == ()  # boots to READY. with no user media
-    assert (repo_machines / "c64" / "vicerc").is_file()
+    vicerc = repo_machines / "c64" / "vicerc"
+    assert vicerc.is_file()
+    # Boots fullscreen, like the 86Box machine.
+    assert "VICIIFullscreen=1" in vicerc.read_text()
 
 
 def test_load_machine_parses_fields_and_media(machine_root: Path):
