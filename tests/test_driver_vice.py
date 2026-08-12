@@ -50,6 +50,9 @@ def test_media_args_warns_on_missing_file_but_still_emits_flag(tmp_path, capsys)
     args = vice.media_args(m)  # file deliberately absent
     assert args[0] == "-8"
     assert "missing.d64" in capsys.readouterr().err
+    assert len(args) == 2
+    assert Path(args[1]).is_absolute()
+    assert args[1] == str((m.path / "media" / "missing.d64").resolve())
 
 
 def test_media_args_unknown_slot_raises(tmp_path):
