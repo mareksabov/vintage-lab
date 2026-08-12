@@ -70,8 +70,35 @@ sync_one() {
     return 0
   fi
   mkdir -p "$dst"
-  rsync -a --delete "$src/" "$dst/"
-  echo "  ok:   $label"
+
+  # Progress by polling the destination size against the source total. Works
+  # with any rsync (macOS openrsync ignores --progress; this does not).
+  local total_kb done_kb pct rc=0
+  total_kb=$(du -sk "$src" 2>/dev/null | awk '{print $1}') || true
+  total_kb=${total_kb:-0}
+
+  rsync -a --delete "$src/" "$dst/" &
+  local pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    done_kb=$(du -sk "$dst" 2>/dev/null | awk '{print $1}') || true
+    done_kb=${done_kb:-0}
+    if [ "$total_kb" -gt 0 ]; then
+      pct=$(( done_kb * 100 / total_kb ))
+      [ "$pct" -gt 100 ] && pct=100
+      printf '\r  %s: %d/%d MB (%d%%)      ' "$label" "$((done_kb/1024))" "$((total_kb/1024))" "$pct"
+    else
+      printf '\r  %s: %d MB      ' "$label" "$((done_kb/1024))"
+    fi
+    sleep 2
+  done
+  wait "$pid" || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    printf '\r  ok:   %s (%d MB)                         \n' "$label" "$((total_kb/1024))"
+  else
+    printf '\r  FAIL: %s (rsync exit %d)                 \n' "$label" "$rc"
+  fi
+  return "$rc"
 }
 
 case "$ACTION" in
