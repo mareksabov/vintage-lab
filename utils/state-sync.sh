@@ -22,10 +22,12 @@ CONFIG="${STATE_SYNC_CONFIG:-$SCRIPT_DIR/state-sync.conf}"
 die() { echo "error: $*" >&2; exit 1; }
 
 usage() {
-  echo "usage: $(basename "$0") {store|restore} [-y]"
-  echo "  restore  pull state from the share to this repo (before running)"
-  echo "  store    push state from this repo to the share (after running)"
-  echo "  -y       do not ask for confirmation"
+  echo "usage: $(basename "$0") {store|restore} [machine] [-y]"
+  echo "  restore   pull state from the share to this repo (before running)"
+  echo "  store     push state from this repo to the share (after running)"
+  echo "  machine   sync only this machine (must be one of MACHINES);"
+  echo "            omit to sync every machine in MACHINES"
+  echo "  -y        do not ask for confirmation"
   exit 2
 }
 
@@ -50,8 +52,29 @@ done
 
 [ $# -ge 1 ] || usage
 ACTION="$1"; shift
+
+# Remaining args, in any order: an optional single machine name (to sync just
+# that one instead of all of MACHINES) and the optional -y flag.
 ASSUME_YES=0
-[ "${1:-}" = "-y" ] && ASSUME_YES=1
+ONLY_MACHINE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -y) ASSUME_YES=1 ;;
+    -*) usage ;;
+    *)  [ -n "$ONLY_MACHINE" ] && die "specify at most one machine (got '$ONLY_MACHINE' and '$1')"
+        ONLY_MACHINE="$1" ;;
+  esac
+  shift
+done
+
+# Resolve which machines to sync: the requested one, or all configured ones.
+SYNC_MACHINES="$MACHINES"
+if [ -n "$ONLY_MACHINE" ]; then
+  found=0
+  for m in $MACHINES; do [ "$m" = "$ONLY_MACHINE" ] && found=1; done
+  [ "$found" = 1 ] || die "machine '$ONLY_MACHINE' is not in MACHINES ($MACHINES) — add it in $CONFIG or pick one of those"
+  SYNC_MACHINES="$ONLY_MACHINE"
+fi
 
 confirm() {
   [ "$ASSUME_YES" = 1 ] && return 0
@@ -127,7 +150,7 @@ case "$ACTION" in
   store)
     require_share
     confirm "Push local state -> $SAMBA_DIR (overwrites the share). Continue?" || exit 1
-    for m in $MACHINES; do
+    for m in $SYNC_MACHINES; do
       echo "$m:"
       for d in $SYNC_DIRS; do
         sync_one "$REPO_ROOT/machines/$m/$d" "$(remote_dir "$m" "$d")" "$m/$d  ->  share"
@@ -137,14 +160,14 @@ case "$ACTION" in
   restore)
     require_share
     confirm "Pull state from $SAMBA_DIR -> local (overwrites local). Continue?" || exit 1
-    for m in $MACHINES; do
+    for m in $SYNC_MACHINES; do
       echo "$m:"
       for d in $SYNC_DIRS; do
         sync_one "$(remote_dir "$m" "$d")" "$REPO_ROOT/machines/$m/$d" "share  ->  $m/$d"
       done
     done
     [ "$SYNCED" -gt 0 ] \
-      || die "the share is reachable but holds nothing for: $MACHINES — run 'store' on the computer that has the state"
+      || die "the share is reachable but holds nothing for: $SYNC_MACHINES — run 'store' on the computer that has the state"
     ;;
   *)
     usage
