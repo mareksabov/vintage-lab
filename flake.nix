@@ -54,9 +54,19 @@
           # prebuilt app on aarch64-darwin, nothing elsewhere. The wrapper
           # script resolves VICE.app relative to its own dir, so point straight
           # at .../vice/bin/x64sc (no bin/ symlink — that would break dirname).
-          viceBin =
-            if pkgs.stdenv.isLinux then "${pkgs.vice}/bin/x64sc"
-            else if system == "aarch64-darwin" then "${vice-macos}/vice/bin/x64sc"
+          # `version` travels with the binary: the driver stamps it into the
+          # machine's state/vicerc so VICE stops warning about a config with no
+          # version tag, and the value has to match whichever VICE runs here
+          # (3.10 from nixpkgs vs 3.9 in the macOS DMG).
+          vice =
+            if pkgs.stdenv.isLinux then {
+              bin = "${pkgs.vice}/bin/x64sc";
+              version = pkgs.vice.version;
+            }
+            else if system == "aarch64-darwin" then {
+              bin = "${vice-macos}/vice/bin/x64sc";
+              version = vice-macos.version;
+            }
             else null;
         in
         rec {
@@ -74,11 +84,11 @@
 
         vintage =
           let
-            # Wire VINTAGE_VICE_BIN only where an x64sc exists (see viceBin
+            # Wire the VICE env vars only where an x64sc exists (see `vice`
             # above). optionalString leaves the reference unforced when null,
             # so unsupported platforms (e.g. x86_64-darwin) still evaluate.
-            viceArg = nixpkgs.lib.optionalString (viceBin != null)
-              "--set VINTAGE_VICE_BIN ${viceBin}";
+            viceArg = nixpkgs.lib.optionalString (vice != null)
+              "--set VINTAGE_VICE_BIN ${vice.bin} --set VINTAGE_VICE_VERSION ${vice.version}";
           in
           pkgs.symlinkJoin {
             name = "vintage";

@@ -30,6 +30,69 @@ the versioned template into the machine's gitignored `state/` on first run, so
 runtime tweaks persist there. Media is attached on the command line (`-8
 <disk.d64>`), not via the config file.
 
+### The version tag, and why the launcher stamps it
+
+VICE writes its own version into every config it saves:
+
+```
+[Version]
+ConfigVersion=3.10
+```
+
+On load it checks that section and, in the GTK3 UI, opens a modal dialog:
+
+- tag missing → `WARNING: No version tag found in configuration file.`
+- tag present but different → `WARNING: Configuration file version mismatch
+  (is '3.9', expected '3.10').`
+
+A freshly copied template has no tag, so this dialog appeared on **every** boot.
+The tag cannot live in the versioned template either: the expected value is
+whichever VICE the flake pinned for the platform (3.10 from nixpkgs on Linux,
+3.9 in the macOS DMG), so a hardcoded value would just swap the missing-tag
+dialog for the mismatch one on the other platform.
+
+So it is an environment fact, not a machine fact: the flake exports
+`VINTAGE_VICE_VERSION` next to `VINTAGE_VICE_BIN`, and `drivers/vice.py`
+appends the section to `state/<config>` when that file has none. Notes:
+
+- The section may sit **after** the machine section — a plain append works
+  (verified; VICE scans for it rather than requiring it first).
+- An existing tag is never rewritten. VICE put it there when the user saved
+  settings, and a mismatch after a VICE bump is a real signal for the user.
+- `-dumpconfig` does *not* emit the `[Version]` section, only `[C64SC]`; the
+  tag is written by the save-settings path.
+- Without `VINTAGE_VICE_VERSION` (running `x64sc` outside the flake wrapper)
+  the launcher stamps nothing and the dialog returns.
+
+### `vicerc` has no comment syntax inside a section
+
+VICE's rc parser skips unparseable lines that appear **before** the first
+section, which is why the template's header comment block is fine. Inside a
+section, any line containing `=` is parsed as a resource assignment — a `#`
+prefix does not protect it:
+
+```
+Error - Unknown resource `# Alt+D (Cmd+D on macOS); FullscreenDecorations'.
+Warning - …/state/vicerc: Unknown resource specification at line 11.
+```
+
+Hence the rule in the template: all comments live in the header, and none of
+them contains an `=`.
+
+## Fullscreen
+
+`VICIIFullscreen=1` in the `[C64SC]` section boots the machine fullscreen (the
+resource is per video chip; `-VICIIfull` is the equivalent CLI flag). Runtime
+hotkeys, from `share/vice/hotkeys/hotkeys.vhk`: `Alt+D` / `Cmd+D` toggles
+fullscreen, `Alt+B` / `Cmd+B` toggles the decorations (menu and status bar).
+
+The template sets only `VICIIFullscreen`. The companion `FullscreenDecorations`
+is a GTK3 resource and already defaults to 0, so shipping it would buy nothing
+and risk an `Unknown resource` line on the SDL2 macOS build. Unknown resources
+are log-only — they do not raise a dialog — so on the off chance the SDL2 build
+spells fullscreen differently, the cost is a log line and a windowed C64, not a
+broken boot. Verified on GTK3/Linux only; still to check on aarch64-darwin.
+
 ## Platform availability
 
 ### nixpkgs `vice` is Linux-only
@@ -69,9 +132,11 @@ derivation:
   `bin/` symlink would break `dirname`. Hence no symlink; the env var holds the
   full store path.
 
-The per-platform selection lives in the `viceBin` binding in `flake.nix`:
-Linux → `pkgs.vice`; `aarch64-darwin` → `vice-macos`; otherwise `null` (and
-`VINTAGE_VICE_BIN` is simply not set, so the 86Box path still works).
+The per-platform selection lives in the `vice` binding in `flake.nix`, which
+carries both the binary path and its version: Linux → `pkgs.vice`;
+`aarch64-darwin` → `vice-macos`; otherwise `null` (and neither
+`VINTAGE_VICE_BIN` nor `VINTAGE_VICE_VERSION` is set, so the 86Box path still
+works).
 
 ### Licensing note
 
@@ -107,3 +172,32 @@ binary segfaults identically** in the same context, confirming this is an
 environment limitation, not a packaging defect. The final visual confirmation —
 `vintage run c64` opening the blue `READY.` BASIC screen — must be done in an
 interactive desktop session.
+
+## Verified on x86_64-linux (2026-08-12, VICE 3.10 from nixpkgs)
+
+The GTK3 build here *can* be driven headlessly, but only under a real X server:
+GTK initialises before the config is read, so with no `DISPLAY` the process dies
+before it can log anything about the config. Under
+`xvfb-run -a -s "-screen 0 1024x768x24"` the whole boot is observable, and log
+messages go to **stdout** (`LogToStdout=1`), not stderr.
+
+Config-version behaviour, one run per variant:
+
+| `state/vicerc` | log line |
+| --- | --- |
+| comments only | `Warning - No version tag found in config file.` |
+| `ConfigVersion=3.10` | *(clean)* |
+| `ConfigVersion=3.9` | `Warning - Config file version mismatch (is '3.9', expected '3.10').` |
+
+End-to-end, `vintage run c64` from the wrapped package:
+- the launcher stamped `[Version] ConfigVersion=3.10` into a fresh
+  `state/vicerc`, and the version warnings are gone;
+- a root-window screenshot shows the emulator canvas filling all of 1024×768
+  with no window title, menu or status bar — `VICIIFullscreen=1` took effect;
+- `VICIIFullscreen=1` also survives a `-dumpconfig` round-trip, confirming the
+  resource name;
+- `pytest -q` → 41 passed.
+
+Baseline noise, present in stock runs too and unrelated to this repo: three
+`DriveROM: Error - … ROM image not found` lines (optional CMD-HD / 2000 / 4000
+drive ROMs that nixpkgs does not ship) and a missing `gtk3-joymap-C64SC.vjm`.
