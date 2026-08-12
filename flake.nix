@@ -50,13 +50,12 @@
             };
           };
 
-          # Source of the x64sc binary per platform: nixpkgs on Linux, the
-          # prebuilt app on aarch64-darwin, nothing elsewhere. The wrapper
-          # script resolves VICE.app relative to its own dir, so point straight
-          # at .../vice/bin/x64sc (no bin/ symlink — that would break dirname).
-          viceBin =
-            if pkgs.stdenv.isLinux then "${pkgs.vice}/bin/x64sc"
-            else if system == "aarch64-darwin" then "${vice-macos}/vice/bin/x64sc"
+          # Directory holding the VICE binaries (x64sc, xvic, ...) per platform:
+          # nixpkgs on Linux, the prebuilt app on aarch64-darwin, nothing
+          # elsewhere. The driver joins the per-model binary name onto this dir.
+          viceBinDir =
+            if pkgs.stdenv.isLinux then "${pkgs.vice}/bin"
+            else if system == "aarch64-darwin" then "${vice-macos}/vice/bin"
             else null;
         in
         rec {
@@ -74,11 +73,12 @@
 
         vintage =
           let
-            # Wire VINTAGE_VICE_BIN only where an x64sc exists (see viceBin
-            # above). optionalString leaves the reference unforced when null,
-            # so unsupported platforms (e.g. x86_64-darwin) still evaluate.
-            viceArg = nixpkgs.lib.optionalString (viceBin != null)
-              "--set VINTAGE_VICE_BIN ${viceBin}";
+            # Wire VINTAGE_VICE_BIN_DIR only where the VICE binaries exist (see
+            # viceBinDir above). optionalString leaves the reference unforced
+            # when null, so unsupported platforms (e.g. x86_64-darwin) still
+            # evaluate.
+            viceArg = nixpkgs.lib.optionalString (viceBinDir != null)
+              "--set VINTAGE_VICE_BIN_DIR ${viceBinDir}";
           in
           pkgs.symlinkJoin {
             name = "vintage";

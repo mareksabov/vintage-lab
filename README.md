@@ -9,6 +9,13 @@ The first supported machine is a Dell OptiPlex-class Pentium II running in
 [86Box](https://86box.net/) — a machine that can boot plain DOS and Windows 98,
 just like the original hardware.
 
+Two Commodore machines also ship, running under [VICE](https://vice-emu.sourceforge.io/):
+a **Commodore 64** (`x64sc`) and a **VIC-20** (`xvic`). Both boot to the BASIC
+`READY.` prompt with no user-provided media, and both accept a disk, a
+CRT cartridge, a datasette tape, or an auto-run program, plus an optional RAM
+expansion (VIC-20 memory blocks; C64 REU) — see
+[Commodore machines](#commodore-machines).
+
 > **Status:** the launcher core and Nix packaging are complete and tested. The
 > shipped OptiPlex hardware profile and the exact 86Box media-config keys are
 > authored interactively (see [Authoring a machine](#authoring-a-machine)).
@@ -102,6 +109,44 @@ does not persist across runs — edit `machine.toml` to change what is inserted.
 a referenced media file is missing, the launcher warns on stderr and continues
 (the drive simply shows empty).
 
+## Commodore machines
+
+The `c64` and `vic20` machines run under VICE and need no external ROMs — VICE
+bundles them. Each declares a `model` in `machine.toml` (`c64` → `x64sc`,
+`vic20` → `xvic`); the launcher selects the matching VICE binary from one wrapped
+distribution.
+
+```bash
+nix run .#vintage -- run c64     # boots to READY. on a bare C64
+nix run .#vintage -- run vic20   # boots to READY. on a bare VIC-20
+```
+
+Attach media by adding `[[media]]` entries. Slots map to VICE flags (identical
+for both machines):
+
+| Slot        | VICE flag    | Use                                        |
+|-------------|--------------|--------------------------------------------|
+| `drive8`    | `-8`         | disk image (`.d64`) in drive 8             |
+| `cart`      | `-cartcrt`   | CRT-format cartridge image (`.crt`)        |
+| `tape`      | `-1`         | datasette tape (`.tap`/`.t64`); `LOAD` it  |
+| `autostart` | `-autostart` | attach and auto-run a program/image        |
+
+Add an optional RAM expansion with the `ram` knob: on the VIC-20 it takes a
+memory spec (`3k`/`8k`/`16k`/`24k`/`all` → `-memory`), on the C64 it takes `reu`
+(→ `-reu`). Example VIC-20 `machine.toml`:
+
+```toml
+name     = "Commodore VIC-20"
+emulator = "vice"
+model    = "vic20"
+config   = "vicerc"
+ram      = "24k"
+
+[[media]]
+slot = "cart"
+file = "media/game.crt"
+```
+
 ## Authoring a machine
 
 86Box models a concrete machine, so the hardware profile (`86box.cfg`) is created
@@ -129,7 +174,8 @@ into each machine's git-ignored `media/` folder.
 
 - A web frontend over the same core (list, run, insert media).
 - Remote access, so a server-hosted machine is usable from another device.
-- More emulators behind the same launcher (Commodore via VICE, Amiga via FS-UAE).
+- More emulators behind the same launcher (Commodore via VICE already ships —
+  C64 and VIC-20; Amiga via FS-UAE next).
 - Uploading media through the frontend instead of copying files in by hand.
 
 ## License
