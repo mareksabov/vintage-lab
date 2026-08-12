@@ -1,4 +1,25 @@
 # VICE configuration for a bare Commodore VIC-20 (xvic).
+#
 # Hardware defaults come from VICE. The launcher copies this file into the
 # machine's gitignored state/ on first run; VICE reads and writes that working
 # copy, so runtime tweaks persist there without touching this template.
+#
+# Keep every comment in this header, and keep equals signs out of it: VICE
+# skips unparseable lines that appear before the first section, but inside a
+# section it reads any line containing an equals sign as a resource
+# assignment and logs "Unknown resource" for it.
+#
+# No version section here on purpose. VICE stamps one into every config it
+# saves and warns on load when it is missing, but the expected value is
+# whichever VICE the flake pinned for this platform, so the launcher appends
+# it to the working copy in state/ instead. See drivers/vice.py.
+#
+# VICFullscreen boots straight into fullscreen, like the C64 and 86Box
+# machines; Alt+D toggles it at runtime (Cmd+D on macOS). Decorations, the
+# menu and status bar shown while fullscreen, stay off at VICE's default;
+# Alt+B toggles them. FullscreenDecorations is deliberately not set here -- it
+# is a GTK3 resource and the macOS build is SDL2. The VIC-20 video chip is VIC
+# (the C64's is VICII), hence VICFullscreen here versus VICIIFullscreen there.
+
+[VIC20]
+VICFullscreen=1
