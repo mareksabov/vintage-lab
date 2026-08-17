@@ -81,7 +81,8 @@ Tyrian (1995), Raptor: Call of the Shadows (1994), Epic Pinball, and
 StarCraft + Brood War (1998), Age of Empires II (1999), Diablo II (2000),
 Baldur's Gate I/II, Fallout 1 & 2, Planescape: Torment, System Shock 2,
 Heroes of Might & Magic III (1999), The Sims (2000), GTA 1 & 2,
-Need for Speed III: Hot Pursuit (1998), Grim Fandango (1998),
+Need for Speed III: Hot Pursuit (1998), Carmageddon (1997),
+Destruction Derby 2 (1996), Road Rash (1996), Grim Fandango (1998),
 Worms Armageddon, 3D Pinball: Space Cadet.
 
 **Software, for the atmosphere** — Winamp 2.x, ICQ 99b, mIRC,
